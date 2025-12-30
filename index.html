@@ -19,7 +19,7 @@
       --tile:62px;
       --gap:8px;
       --radius:10px;
-      --font: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      --font: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
     }
 
     *{box-sizing:border-box}
@@ -39,47 +39,29 @@
       display:flex;
       align-items:center;
       justify-content:space-between;
-      gap:12px;
     }
+
     header h1{
       margin:0;
       font-size:18px;
       letter-spacing:0.5px;
       text-transform:uppercase;
     }
-    .stats{
-      display:flex;
-      gap:10px;
-      align-items:center;
-      font-size:13px;
-      color:var(--muted);
-      flex-wrap:wrap;
-      justify-content:flex-end;
-    }
+
     .btn{
       border:1px solid var(--border);
       background:transparent;
       color:var(--text);
-      padding:8px 10px;
+      padding:8px 12px;
       border-radius:10px;
       cursor:pointer;
-      font-weight:600;
-    }
-    .btn:hover{border-color:#565758}
-    .btn:active{transform:translateY(1px)}
-    .pill{
-      border:1px solid var(--border);
-      padding:7px 10px;
-      border-radius:999px;
-      color:var(--text);
-      background:rgba(255,255,255,0.02);
       font-weight:600;
     }
 
     main{
       width:min(540px, 94vw);
       margin:0 auto;
-      padding:18px 0 16px;
+      padding:18px 0;
       flex:1;
       display:flex;
       flex-direction:column;
@@ -89,39 +71,29 @@
 
     .toast{
       min-height:24px;
-      color:var(--text);
       font-weight:700;
-      letter-spacing:0.2px;
       opacity:0;
-      transform:translateY(-6px);
-      transition:opacity .15s ease, transform .15s ease;
-      text-align:center;
+      transition:.15s;
     }
-    .toast.show{
-      opacity:1;
-      transform:translateY(0);
-    }
+    .toast.show{opacity:1}
 
     .board{
-      width:100%;
       display:flex;
       flex-direction:column;
-      align-items:center;
-      gap:var(--gap);
-      padding:6px 0;
+      gap:8px;
     }
 
     .row{
       display:grid;
-      grid-template-columns:repeat(5, var(--tile));
-      gap:var(--gap);
+      grid-template-columns:repeat(5, 62px);
+      gap:8px;
     }
 
     .tile{
-      width:var(--tile);
-      height:var(--tile);
+      width:62px;
+      height:62px;
       border:2px solid var(--border);
-      border-radius:var(--radius);
+      border-radius:10px;
       display:flex;
       align-items:center;
       justify-content:center;
@@ -129,364 +101,199 @@
       font-weight:800;
       text-transform:uppercase;
       background:var(--panel);
-      user-select:none;
-    }
-    .tile.filled{
-      border-color:#565758;
     }
 
-    .tile.correct{ background:var(--correct); border-color:var(--correct); }
-    .tile.present{ background:var(--present); border-color:var(--present); }
-    .tile.absent{  background:var(--absent);  border-color:var(--absent); }
+    .tile.filled{border-color:#565758}
+    .tile.correct{background:var(--correct);border-color:var(--correct)}
+    .tile.present{background:var(--present);border-color:var(--present)}
+    .tile.absent{background:var(--absent);border-color:var(--absent)}
 
     .keyboard{
-      width:100%;
       display:flex;
       flex-direction:column;
-      gap:10px;
-      user-select:none;
-      padding-bottom:14px;
+      gap:8px;
     }
+
     .kb-row{
       display:flex;
       justify-content:center;
       gap:6px;
-      flex-wrap:nowrap;
     }
+
     .key{
       height:52px;
       min-width:36px;
       padding:0 10px;
-      border:0;
       border-radius:12px;
-      cursor:pointer;
       background:#818384;
-      color:#111;
+      border:none;
       font-weight:800;
+      cursor:pointer;
       text-transform:uppercase;
-      font-size:14px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
     }
+
     .key.wide{min-width:72px}
-    .key:active{transform:translateY(1px)}
-    .key.correct{ background:var(--correct); color:#0e0e0e; }
-    .key.present{ background:var(--present); color:#0e0e0e; }
-    .key.absent{  background:var(--absent);  color:#d7dadc; }
-
-    .footer{
-      width:100%;
-      color:var(--muted);
-      font-size:12px;
-      text-align:center;
-      padding:0 12px 18px;
-      line-height:1.4;
-    }
-
-    @media (max-width:420px){
-      :root{ --tile:54px; }
-      .tile{ font-size:28px; }
-      .key{ height:48px; min-width:32px; padding:0 8px; }
-      .key.wide{ min-width:64px; }
-    }
+    .key.correct{background:var(--correct)}
+    .key.present{background:var(--present)}
+    .key.absent{background:var(--absent);color:#d7dadc}
   </style>
 </head>
 
 <body>
-  <header>
-    <h1>Infinite Wordle</h1>
-    <div class="stats">
-      <span class="pill" id="streak">Streak: 0</span>
-      <span class="pill" id="solved">Solved: 0</span>
-      <button class="btn" id="clearBtn" title="Clear the board for the current word">Clear</button>
-    </div>
-  </header>
+<header>
+  <h1>Infinite Wordle</h1>
+  <button class="btn" id="clearBtn">Clear</button>
+</header>
 
-  <main>
-    <div class="toast" id="toast"> </div>
-    <div class="board" id="board" aria-label="Game board"></div>
-
-    <div class="keyboard" id="keyboard" aria-label="On-screen keyboard"></div>
-
-    <div class="footer"></div>
-  </main>
+<main>
+  <div class="toast" id="toast"></div>
+  <div class="board" id="board"></div>
+  <div class="keyboard" id="keyboard"></div>
+</main>
 
 <script>
 (() => {
+
   // ============================================================
-  // EDIT YOUR HIDDEN WORD HERE (must be exactly 5 letters a-z):
+  // EDIT YOUR HIDDEN WORD HERE (exactly 5 letters, a–z)
   // ============================================================
-  const SECRET_WORD = "apple"; // <-- change this
+  const SECRET_WORD = "apple"; // <-- CHANGE THIS
   // ============================================================
 
-  function normalizeSecret(s) {
-    return String(s || "")
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z]/g, "");
-  }
+  const answer = SECRET_WORD.toLowerCase();
 
-  const answerRaw = normalizeSecret(SECRET_WORD);
-
-  if (answerRaw.length !== 5) {
-    // Fail loudly in console if you didn't set a proper 5-letter secret.
-    console.error("SECRET_WORD must be exactly 5 letters (a-z). Current:", SECRET_WORD);
-  }
-
-  const boardEl = document.getElementById("board");
-  const kbEl = document.getElementById("keyboard");
-  const toastEl = document.getElementById("toast");
-  const streakEl = document.getElementById("streak");
-  const solvedEl = document.getElementById("solved");
+  const board = document.getElementById("board");
+  const keyboard = document.getElementById("keyboard");
+  const toast = document.getElementById("toast");
   const clearBtn = document.getElementById("clearBtn");
 
-  const KEY_ROWS = [
+  const KEYS = [
     ["q","w","e","r","t","y","u","i","o","p"],
     ["a","s","d","f","g","h","j","k","l"],
     ["enter","z","x","c","v","b","n","m","back"]
   ];
 
   const state = {
-    answer: answerRaw,    // never shown until solved
-    rows: [],             // { letters: [..5], result: [..5] }
-    current: [],          // letters typed for current row
-    keyStatus: new Map(), // letter -> "correct"|"present"|"absent"
-    streak: 0,
-    solved: 0,
+    rows: [],
+    current: [],
+    keyStatus: new Map(),
     gameOver: false
   };
 
-  // --- UI helpers ---
-  function showToast(msg) {
-    toastEl.textContent = msg;
-    toastEl.classList.add("show");
-    clearTimeout(showToast._t);
-    showToast._t = setTimeout(() => toastEl.classList.remove("show"), 1200);
+  function showToast(msg){
+    toast.textContent = msg;
+    toast.classList.add("show");
+    setTimeout(()=>toast.classList.remove("show"),1200);
   }
 
-  function save() {
-    // Do NOT store the secret in localStorage (so someone can’t trivially read it there).
-    // This means reloading the page resets progress unless you keep the page open.
-    localStorage.setItem("infiniteWordleProgress", JSON.stringify({
-      rows: state.rows,
-      current: state.current,
-      keyStatus: [...state.keyStatus.entries()],
-      streak: state.streak,
-      solved: state.solved,
-      gameOver: state.gameOver
-    }));
-  }
-
-  function load() {
-    try{
-      const raw = localStorage.getItem("infiniteWordleProgress");
-      if(!raw) return;
-      const d = JSON.parse(raw);
-      state.rows = Array.isArray(d.rows) ? d.rows : [];
-      state.current = Array.isArray(d.current) ? d.current : [];
-      state.keyStatus = new Map(Array.isArray(d.keyStatus) ? d.keyStatus : []);
-      state.streak = Number.isFinite(d.streak) ? d.streak : 0;
-      state.solved = Number.isFinite(d.solved) ? d.solved : 0;
-      state.gameOver = !!d.gameOver;
-    } catch(e){ /* ignore */ }
-  }
-
-  function clearForSameWord() {
-    state.rows = [];
-    state.current = [];
-    state.keyStatus = new Map();
-    state.gameOver = false;
-    renderAll();
-    save();
-  }
-
-  function setStatText() {
-    streakEl.textContent = `Streak: ${state.streak}`;
-    solvedEl.textContent = `Solved: ${state.solved}`;
-  }
-
-  // --- Core Wordle scoring (handles duplicates correctly) ---
-  // returns array of "correct"|"present"|"absent"
-  function scoreGuess(guess, answer) {
+  function score(guess){
     const res = Array(5).fill("absent");
     const a = answer.split("");
     const g = guess.split("");
 
-    // First pass: correct positions
-    for (let i = 0; i < 5; i++) {
-      if (g[i] === a[i]) {
-        res[i] = "correct";
-        a[i] = null; // consume
-        g[i] = null;
+    for(let i=0;i<5;i++){
+      if(g[i]===a[i]){
+        res[i]="correct";
+        a[i]=g[i]=null;
       }
     }
-    // Second pass: present elsewhere
-    for (let i = 0; i < 5; i++) {
-      if (g[i] == null) continue;
-      const idx = a.indexOf(g[i]);
-      if (idx !== -1) {
-        res[i] = "present";
-        a[idx] = null; // consume
+    for(let i=0;i<5;i++){
+      if(g[i] && a.includes(g[i])){
+        res[i]="present";
+        a[a.indexOf(g[i])] = null;
       }
     }
     return res;
   }
 
-  function mergeKeyStatus(letter, status) {
-    const prev = state.keyStatus.get(letter);
-    // correct > present > absent
-    const rank = s => (s === "correct" ? 3 : s === "present" ? 2 : s === "absent" ? 1 : 0);
-    if (!prev || rank(status) > rank(prev)) state.keyStatus.set(letter, status);
-  }
+  function submit(){
+    if(state.current.length<5 || state.gameOver) return;
 
-  function submit() {
-    if (state.gameOver) return;
+    const guess = state.current.join("");
+    const result = score(guess);
 
-    if (state.current.length < 5) {
-      showToast("Not enough letters.");
-      return;
+    state.rows.push({letters:[...state.current],result});
+    state.current=[];
+
+    result.forEach((r,i)=>{
+      const l=guess[i];
+      const prev=state.keyStatus.get(l);
+      if(!prev || r==="correct" || (r==="present" && prev==="absent"))
+        state.keyStatus.set(l,r);
+    });
+
+    if(result.every(r=>r==="correct")){
+      state.gameOver=true;
+      showToast("Correct!");
     }
 
-    // Accept ANY 5-letter guess (a-z), no dictionary.
-    const guess = state.current.join("").toLowerCase();
-    if (!/^[a-z]{5}$/.test(guess)) {
-      showToast("Only letters A–Z.");
-      return;
-    }
-
-    const result = scoreGuess(guess, state.answer);
-
-    state.rows.push({ letters: [...state.current], result });
-
-    for (let i = 0; i < 5; i++) mergeKeyStatus(state.current[i].toLowerCase(), result[i]);
-
-    state.current = [];
-
-    const solved = result.every(x => x === "correct");
-    if (solved) {
-      state.solved += 1;
-      state.streak += 1;
-      state.gameOver = true;
-
-      renderAll();
-      save();
-
-      // Reveal ONLY after they solve it.
-      showToast(`Correct: ${state.answer.toUpperCase()}`);
-      return;
-    }
-
-    renderAll();
-    save();
+    render();
   }
 
-  function addLetter(ch) {
-    if (state.gameOver) return;
-    if (state.current.length >= 5) return;
-    if (!/^[a-z]$/i.test(ch)) return;
-    state.current.push(ch.toLowerCase());
-    renderAll();
-    save();
-  }
+  function render(){
+    board.innerHTML="";
+    state.rows.forEach(r=>{
+      const row=document.createElement("div");
+      row.className="row";
+      r.letters.forEach((l,i)=>{
+        const t=document.createElement("div");
+        t.className="tile "+r.result[i];
+        t.textContent=l;
+        row.appendChild(t);
+      });
+      board.appendChild(row);
+    });
 
-  function backspace() {
-    if (state.gameOver) return;
-    if (state.current.length === 0) return;
-    state.current.pop();
-    renderAll();
-    save();
-  }
-
-  // --- Rendering ---
-  function renderBoard() {
-    boardEl.innerHTML = "";
-
-    for (const r of state.rows) {
-      const row = document.createElement("div");
-      row.className = "row";
-      for (let i = 0; i < 5; i++) {
-        const t = document.createElement("div");
-        t.className = `tile ${r.result[i]}`;
-        t.textContent = r.letters[i] || "";
+    if(!state.gameOver){
+      const row=document.createElement("div");
+      row.className="row";
+      for(let i=0;i<5;i++){
+        const t=document.createElement("div");
+        t.className="tile"+(state.current[i]?" filled":"");
+        t.textContent=state.current[i]||"";
         row.appendChild(t);
       }
-      boardEl.appendChild(row);
+      board.appendChild(row);
     }
 
-    if (!state.gameOver) {
-      const curRow = document.createElement("div");
-      curRow.className = "row";
-      for (let i = 0; i < 5; i++) {
-        const t = document.createElement("div");
-        const letter = state.current[i] || "";
-        t.className = "tile" + (letter ? " filled" : "");
-        t.textContent = letter;
-        curRow.appendChild(t);
-      }
-      boardEl.appendChild(curRow);
-    }
+    keyboard.innerHTML="";
+    KEYS.forEach(r=>{
+      const row=document.createElement("div");
+      row.className="kb-row";
+      r.forEach(k=>{
+        const b=document.createElement("button");
+        b.className="key"+(k.length>1?" wide":"");
+        b.textContent=k==="back"?"⌫":k;
+        if(state.keyStatus.get(k)) b.classList.add(state.keyStatus.get(k));
+        b.onclick=()=>{
+          if(k==="enter") submit();
+          else if(k==="back") state.current.pop();
+          else if(state.current.length<5) state.current.push(k);
+          render();
+        };
+        row.appendChild(b);
+      });
+      keyboard.appendChild(row);
+    });
   }
 
-  function renderKeyboard() {
-    kbEl.innerHTML = "";
+  clearBtn.onclick=()=>{
+    state.rows=[];
+    state.current=[];
+    state.keyStatus.clear();
+    state.gameOver=false;
+    render();
+  };
 
-    for (const rowKeys of KEY_ROWS) {
-      const r = document.createElement("div");
-      r.className = "kb-row";
-
-      for (const k of rowKeys) {
-        const b = document.createElement("button");
-        b.className = "key";
-        b.type = "button";
-
-        if (k === "enter") {
-          b.textContent = "Enter";
-          b.classList.add("wide");
-          b.addEventListener("click", submit);
-        } else if (k === "back") {
-          b.textContent = "⌫";
-          b.classList.add("wide");
-          b.addEventListener("click", backspace);
-        } else {
-          b.textContent = k;
-          const st = state.keyStatus.get(k);
-          if (st) b.classList.add(st);
-          b.addEventListener("click", () => addLetter(k));
-        }
-
-        r.appendChild(b);
-      }
-      kbEl.appendChild(r);
-    }
-  }
-
-  function renderAll() {
-    setStatText();
-    renderBoard();
-    renderKeyboard();
-  }
-
-  // --- Input handling ---
-  function onKeyDown(e) {
-    if (e.ctrlKey || e.metaKey || e.altKey) return;
-
-    const key = e.key.toLowerCase();
-    if (key === "enter") return submit();
-    if (key === "backspace") return backspace();
-    if (/^[a-z]$/.test(key)) return addLetter(key);
-  }
-
-  // --- Buttons ---
-  clearBtn.addEventListener("click", () => {
-    clearForSameWord();
-    showToast("Cleared.");
+  document.addEventListener("keydown",e=>{
+    if(e.key==="Enter") submit();
+    else if(e.key==="Backspace") state.current.pop();
+    else if(/^[a-z]$/i.test(e.key) && state.current.length<5)
+      state.current.push(e.key.toLowerCase());
+    render();
   });
 
-  // --- Boot ---
-  load();
-  document.addEventListener("keydown", onKeyDown);
-  renderAll();
+  render();
 })();
 </script>
 </body>
