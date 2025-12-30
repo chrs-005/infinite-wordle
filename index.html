@@ -199,7 +199,6 @@
     <div class="stats">
       <span class="pill" id="streak">Streak: 0</span>
       <span class="pill" id="solved">Solved: 0</span>
-      <button class="btn" id="newWordBtn" title="Give up and start a new word">New word</button>
       <button class="btn" id="clearBtn" title="Clear the board for the current word">Clear</button>
     </div>
   </header>
@@ -210,41 +209,36 @@
 
     <div class="keyboard" id="keyboard" aria-label="On-screen keyboard"></div>
 
-    <div class="footer">
-      Same rules as Wordle (5 letters, duplicates handled correctly). Only difference: unlimited guesses.
-    </div>
+    <div class="footer"></div>
   </main>
 
 <script>
 (() => {
-  // --- Minimal built-in word list (you can expand it) ---
-  // Keep everything lowercase 5-letter.
-  const WORDS = [
-    "about","other","which","their","there","first","would","these","click","price",
-    "state","email","world","music","after","video","where","books","links","years",
-    "order","items","group","under","games","could","great","hotel","store","terms",
-    "right","local","those","using","phone","forum","based","black","check","index",
-    "being","women","today","south","pages","found","house","photo","power","while",
-    "three","total","place","think","north","posts","media","water","since","guide",
-    "board","white","small","times","sites","level","hours","image","title","shall",
-    "class","skill","point","build","trade","drive","dream","light","fresh","money",
-    "sharp","brave","quiet","laugh","candy","zebra","piano","crown","spice","sugar",
-    "lemon","mango","grape","peach","bacon","bread","cream","sauce","curry","olive",
-    "urban","rural","civic","model","train","plane","river","ocean","beach","cabin",
-    "robot","cable","cloud","proxy","stack","queue","graph","array","cache","linux",
-    "swift","rusty","react","nodey","front","backy","logic","crypt","phase","moral"
-  ].filter(w => w.length === 5 && /^[a-z]+$/.test(w));
+  // ============================================================
+  // EDIT YOUR HIDDEN WORD HERE (must be exactly 5 letters a-z):
+  // ============================================================
+  const SECRET_WORD = "apple"; // <-- change this
+  // ============================================================
 
-  // Also accept guesses from this list; if you want "real" Wordle behavior,
-  // you’d load a larger dictionary.
-  const ACCEPT_GUESSES = new Set(WORDS);
+  function normalizeSecret(s) {
+    return String(s || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z]/g, "");
+  }
+
+  const answerRaw = normalizeSecret(SECRET_WORD);
+
+  if (answerRaw.length !== 5) {
+    // Fail loudly in console if you didn't set a proper 5-letter secret.
+    console.error("SECRET_WORD must be exactly 5 letters (a-z). Current:", SECRET_WORD);
+  }
 
   const boardEl = document.getElementById("board");
   const kbEl = document.getElementById("keyboard");
   const toastEl = document.getElementById("toast");
   const streakEl = document.getElementById("streak");
   const solvedEl = document.getElementById("solved");
-  const newWordBtn = document.getElementById("newWordBtn");
   const clearBtn = document.getElementById("clearBtn");
 
   const KEY_ROWS = [
@@ -254,12 +248,13 @@
   ];
 
   const state = {
-    answer: pickWord(),
-    rows: [],           // array of { letters: [..5], result: [..5] }
-    current: [],        // letters typed for current row
+    answer: answerRaw,    // never shown until solved
+    rows: [],             // { letters: [..5], result: [..5] }
+    current: [],          // letters typed for current row
     keyStatus: new Map(), // letter -> "correct"|"present"|"absent"
     streak: 0,
     solved: 0,
+    gameOver: false
   };
 
   // --- UI helpers ---
@@ -270,34 +265,30 @@
     showToast._t = setTimeout(() => toastEl.classList.remove("show"), 1200);
   }
 
-  function pickWord() {
-    return WORDS[Math.floor(Math.random() * WORDS.length)];
-  }
-
   function save() {
-    localStorage.setItem("infiniteWordle", JSON.stringify({
-      answer: state.answer,
+    // Do NOT store the secret in localStorage (so someone can’t trivially read it there).
+    // This means reloading the page resets progress unless you keep the page open.
+    localStorage.setItem("infiniteWordleProgress", JSON.stringify({
       rows: state.rows,
       current: state.current,
       keyStatus: [...state.keyStatus.entries()],
       streak: state.streak,
-      solved: state.solved
+      solved: state.solved,
+      gameOver: state.gameOver
     }));
   }
 
   function load() {
     try{
-      const raw = localStorage.getItem("infiniteWordle");
+      const raw = localStorage.getItem("infiniteWordleProgress");
       if(!raw) return;
       const d = JSON.parse(raw);
-      if (d && typeof d.answer === "string" && d.answer.length === 5) {
-        state.answer = d.answer;
-        state.rows = Array.isArray(d.rows) ? d.rows : [];
-        state.current = Array.isArray(d.current) ? d.current : [];
-        state.keyStatus = new Map(Array.isArray(d.keyStatus) ? d.keyStatus : []);
-        state.streak = Number.isFinite(d.streak) ? d.streak : 0;
-        state.solved = Number.isFinite(d.solved) ? d.solved : 0;
-      }
+      state.rows = Array.isArray(d.rows) ? d.rows : [];
+      state.current = Array.isArray(d.current) ? d.current : [];
+      state.keyStatus = new Map(Array.isArray(d.keyStatus) ? d.keyStatus : []);
+      state.streak = Number.isFinite(d.streak) ? d.streak : 0;
+      state.solved = Number.isFinite(d.solved) ? d.solved : 0;
+      state.gameOver = !!d.gameOver;
     } catch(e){ /* ignore */ }
   }
 
@@ -305,16 +296,7 @@
     state.rows = [];
     state.current = [];
     state.keyStatus = new Map();
-    renderAll();
-    save();
-  }
-
-  function newWord(resetStreak=false) {
-    state.answer = pickWord();
-    state.rows = [];
-    state.current = [];
-    state.keyStatus = new Map();
-    if (resetStreak) state.streak = 0;
+    state.gameOver = false;
     renderAll();
     save();
   }
@@ -359,20 +341,24 @@
   }
 
   function submit() {
+    if (state.gameOver) return;
+
     if (state.current.length < 5) {
       showToast("Not enough letters.");
       return;
     }
+
+    // Accept ANY 5-letter guess (a-z), no dictionary.
     const guess = state.current.join("").toLowerCase();
-    if (!ACCEPT_GUESSES.has(guess)) {
-      showToast("Not in word list.");
+    if (!/^[a-z]{5}$/.test(guess)) {
+      showToast("Only letters A–Z.");
       return;
     }
 
     const result = scoreGuess(guess, state.answer);
 
     state.rows.push({ letters: [...state.current], result });
-    // update keyboard statuses
+
     for (let i = 0; i < 5; i++) mergeKeyStatus(state.current[i].toLowerCase(), result[i]);
 
     state.current = [];
@@ -381,11 +367,13 @@
     if (solved) {
       state.solved += 1;
       state.streak += 1;
+      state.gameOver = true;
+
       renderAll();
       save();
-      showToast("Solved. New word.");
-      // start new word but keep streak
-      setTimeout(() => newWord(false), 350);
+
+      // Reveal ONLY after they solve it.
+      showToast(`Correct: ${state.answer.toUpperCase()}`);
       return;
     }
 
@@ -394,6 +382,7 @@
   }
 
   function addLetter(ch) {
+    if (state.gameOver) return;
     if (state.current.length >= 5) return;
     if (!/^[a-z]$/i.test(ch)) return;
     state.current.push(ch.toLowerCase());
@@ -402,6 +391,7 @@
   }
 
   function backspace() {
+    if (state.gameOver) return;
     if (state.current.length === 0) return;
     state.current.pop();
     renderAll();
@@ -412,7 +402,6 @@
   function renderBoard() {
     boardEl.innerHTML = "";
 
-    // render committed rows
     for (const r of state.rows) {
       const row = document.createElement("div");
       row.className = "row";
@@ -425,17 +414,18 @@
       boardEl.appendChild(row);
     }
 
-    // render current row
-    const curRow = document.createElement("div");
-    curRow.className = "row";
-    for (let i = 0; i < 5; i++) {
-      const t = document.createElement("div");
-      const letter = state.current[i] || "";
-      t.className = "tile" + (letter ? " filled" : "");
-      t.textContent = letter;
-      curRow.appendChild(t);
+    if (!state.gameOver) {
+      const curRow = document.createElement("div");
+      curRow.className = "row";
+      for (let i = 0; i < 5; i++) {
+        const t = document.createElement("div");
+        const letter = state.current[i] || "";
+        t.className = "tile" + (letter ? " filled" : "");
+        t.textContent = letter;
+        curRow.appendChild(t);
+      }
+      boardEl.appendChild(curRow);
     }
-    boardEl.appendChild(curRow);
   }
 
   function renderKeyboard() {
@@ -488,12 +478,6 @@
   }
 
   // --- Buttons ---
-  newWordBtn.addEventListener("click", () => {
-    state.streak = 0; // giving up kills streak
-    newWord(true);
-    showToast("New word. Streak reset.");
-  });
-
   clearBtn.addEventListener("click", () => {
     clearForSameWord();
     showToast("Cleared.");
