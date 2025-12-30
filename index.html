@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Infinite Wordle</title>
+  <title>griffff</title>
   <style>
     :root{
       --bg:#121213;
@@ -39,6 +39,7 @@
       display:flex;
       align-items:center;
       justify-content:space-between;
+      gap:12px;
     }
 
     header h1{
@@ -46,6 +47,7 @@
       font-size:18px;
       letter-spacing:0.5px;
       text-transform:uppercase;
+      white-space:nowrap;
     }
 
     .btn{
@@ -59,7 +61,7 @@
     }
 
     main{
-      width:min(540px, 94vw);
+      width:min(920px, 96vw);
       margin:0 auto;
       padding:18px 0;
       flex:1;
@@ -73,27 +75,32 @@
       min-height:24px;
       font-weight:700;
       opacity:0;
-      transition:.15s;
+      transform:translateY(-6px);
+      transition:opacity .15s ease, transform .15s ease;
+      text-align:center;
     }
-    .toast.show{opacity:1}
+    .toast.show{opacity:1; transform:translateY(0)}
 
     .board{
+      width:100%;
       display:flex;
       flex-direction:column;
-      gap:8px;
+      align-items:center;
+      gap:var(--gap);
+      padding:6px 0;
     }
 
     .row{
       display:grid;
-      grid-template-columns:repeat(5, 62px);
-      gap:8px;
+      gap:var(--gap);
+      justify-content:center;
     }
 
     .tile{
-      width:62px;
-      height:62px;
+      width:var(--tile);
+      height:var(--tile);
       border:2px solid var(--border);
-      border-radius:10px;
+      border-radius:var(--radius);
       display:flex;
       align-items:center;
       justify-content:center;
@@ -101,6 +108,7 @@
       font-weight:800;
       text-transform:uppercase;
       background:var(--panel);
+      user-select:none;
     }
 
     .tile.filled{border-color:#565758}
@@ -109,15 +117,19 @@
     .tile.absent{background:var(--absent);border-color:var(--absent)}
 
     .keyboard{
+      width:min(760px, 96vw);
       display:flex;
       flex-direction:column;
-      gap:8px;
+      gap:10px;
+      user-select:none;
+      padding-bottom:14px;
     }
 
     .kb-row{
       display:flex;
       justify-content:center;
       gap:6px;
+      flex-wrap:nowrap;
     }
 
     .key{
@@ -132,35 +144,54 @@
       text-transform:uppercase;
     }
 
-    .key.wide{min-width:72px}
+    .key.wide{min-width:78px}
     .key.correct{background:var(--correct)}
     .key.present{background:var(--present)}
     .key.absent{background:var(--absent);color:#d7dadc}
+
+    @media (max-width:520px){
+      :root{ --tile:54px; }
+      .tile{ font-size:28px; }
+      .key{ height:48px; min-width:32px; padding:0 8px; }
+      .key.wide{ min-width:70px; }
+    }
   </style>
 </head>
 
 <body>
 <header>
-  <h1>Infinite Wordle</h1>
-  <button class="btn" id="clearBtn">Clear</button>
+  <h1>hmmm?</h1>
+  <button class="btn" id="clearBtn" title="Clear the board">Clear</button>
 </header>
 
 <main>
   <div class="toast" id="toast"></div>
-  <div class="board" id="board"></div>
-  <div class="keyboard" id="keyboard"></div>
+  <div class="board" id="board" aria-label="Game board"></div>
+  <div class="keyboard" id="keyboard" aria-label="On-screen keyboard"></div>
 </main>
 
 <script>
 (() => {
 
   // ============================================================
-  // EDIT YOUR HIDDEN WORD HERE (exactly 5 letters, a–z)
+  // EDIT YOUR HIDDEN WORD HERE (any length, letters A–Z only):
   // ============================================================
   const SECRET_WORD = "apple"; // <-- CHANGE THIS
   // ============================================================
 
-  const answer = SECRET_WORD.toLowerCase();
+  function normalizeSecret(s){
+    return String(s || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z]/g, "");
+  }
+
+  const answer = normalizeSecret(SECRET_WORD);
+  const WORD_LEN = answer.length;
+
+  if (WORD_LEN === 0) {
+    console.error("SECRET_WORD must contain at least 1 letter A–Z.");
+  }
 
   const board = document.getElementById("board");
   const keyboard = document.getElementById("keyboard");
@@ -174,123 +205,170 @@
   ];
 
   const state = {
-    rows: [],
-    current: [],
-    keyStatus: new Map(),
+    rows: [],               // { letters: [...], result: [...] }
+    current: [],            // typed letters for current row
+    keyStatus: new Map(),   // letter -> status
     gameOver: false
   };
 
   function showToast(msg){
     toast.textContent = msg;
     toast.classList.add("show");
-    setTimeout(()=>toast.classList.remove("show"),1200);
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(()=>toast.classList.remove("show"),1200);
   }
 
-  function score(guess){
-    const res = Array(5).fill("absent");
+  // Wordle scoring generalized to any length, with duplicate handling.
+  function scoreGuess(guess, answer){
+    const n = answer.length;
+    const res = Array(n).fill("absent");
     const a = answer.split("");
     const g = guess.split("");
 
-    for(let i=0;i<5;i++){
-      if(g[i]===a[i]){
-        res[i]="correct";
-        a[i]=g[i]=null;
+    // correct pass
+    for (let i = 0; i < n; i++){
+      if (g[i] === a[i]){
+        res[i] = "correct";
+        a[i] = null;
+        g[i] = null;
       }
     }
-    for(let i=0;i<5;i++){
-      if(g[i] && a.includes(g[i])){
-        res[i]="present";
-        a[a.indexOf(g[i])] = null;
+
+    // present pass
+    for (let i = 0; i < n; i++){
+      if (g[i] == null) continue;
+      const idx = a.indexOf(g[i]);
+      if (idx !== -1){
+        res[i] = "present";
+        a[idx] = null;
       }
     }
     return res;
   }
 
+  function mergeKeyStatus(letter, status){
+    const prev = state.keyStatus.get(letter);
+    const rank = s => (s === "correct" ? 3 : s === "present" ? 2 : s === "absent" ? 1 : 0);
+    if (!prev || rank(status) > rank(prev)) state.keyStatus.set(letter, status);
+  }
+
   function submit(){
-    if(state.current.length<5 || state.gameOver) return;
+    if (state.gameOver) return;
 
-    const guess = state.current.join("");
-    const result = score(guess);
+    if (state.current.length < WORD_LEN){
+      showToast(`Need ${WORD_LEN} letters.`);
+      return;
+    }
 
-    state.rows.push({letters:[...state.current],result});
-    state.current=[];
+    const guess = state.current.join("").toLowerCase();
+    if (!new RegExp(`^[a-z]{${WORD_LEN}}$`).test(guess)){
+      showToast("Only letters A–Z.");
+      return;
+    }
 
-    result.forEach((r,i)=>{
-      const l=guess[i];
-      const prev=state.keyStatus.get(l);
-      if(!prev || r==="correct" || (r==="present" && prev==="absent"))
-        state.keyStatus.set(l,r);
-    });
+    const result = scoreGuess(guess, answer);
 
-    if(result.every(r=>r==="correct")){
-      state.gameOver=true;
-      showToast("Correct!");
+    state.rows.push({ letters: [...state.current], result });
+    for (let i = 0; i < WORD_LEN; i++) mergeKeyStatus(state.current[i], result[i]);
+
+    state.current = [];
+
+    if (result.every(r => r === "correct")){
+      state.gameOver = true;
+      // Reveal ONLY after they solve it:
+      showToast(`Correct: ${answer.toUpperCase()}`);
     }
 
     render();
+  }
+
+  function addLetter(ch){
+    if (state.gameOver) return;
+    if (state.current.length >= WORD_LEN) return;
+    if (!/^[a-z]$/i.test(ch)) return;
+    state.current.push(ch.toLowerCase());
+    render();
+  }
+
+  function backspace(){
+    if (state.gameOver) return;
+    if (state.current.length === 0) return;
+    state.current.pop();
+    render();
+  }
+
+  function makeRow(letters, result){
+    const row = document.createElement("div");
+    row.className = "row";
+    row.style.gridTemplateColumns = `repeat(${WORD_LEN}, var(--tile))`;
+
+    for (let i = 0; i < WORD_LEN; i++){
+      const t = document.createElement("div");
+      const l = letters[i] || "";
+      t.className = "tile" + (l ? " filled" : "") + (result ? (" " + result[i]) : "");
+      t.textContent = l;
+      row.appendChild(t);
+    }
+    return row;
   }
 
   function render(){
-    board.innerHTML="";
-    state.rows.forEach(r=>{
-      const row=document.createElement("div");
-      row.className="row";
-      r.letters.forEach((l,i)=>{
-        const t=document.createElement("div");
-        t.className="tile "+r.result[i];
-        t.textContent=l;
-        row.appendChild(t);
-      });
-      board.appendChild(row);
-    });
+    board.innerHTML = "";
 
-    if(!state.gameOver){
-      const row=document.createElement("div");
-      row.className="row";
-      for(let i=0;i<5;i++){
-        const t=document.createElement("div");
-        t.className="tile"+(state.current[i]?" filled":"");
-        t.textContent=state.current[i]||"";
-        row.appendChild(t);
-      }
-      board.appendChild(row);
+    // past rows
+    for (const r of state.rows){
+      board.appendChild(makeRow(r.letters, r.result));
     }
 
-    keyboard.innerHTML="";
-    KEYS.forEach(r=>{
-      const row=document.createElement("div");
-      row.className="kb-row";
-      r.forEach(k=>{
-        const b=document.createElement("button");
-        b.className="key"+(k.length>1?" wide":"");
-        b.textContent=k==="back"?"⌫":k;
-        if(state.keyStatus.get(k)) b.classList.add(state.keyStatus.get(k));
-        b.onclick=()=>{
-          if(k==="enter") submit();
-          else if(k==="back") state.current.pop();
-          else if(state.current.length<5) state.current.push(k);
-          render();
-        };
-        row.appendChild(b);
-      });
-      keyboard.appendChild(row);
-    });
+    // current row
+    if (!state.gameOver){
+      board.appendChild(makeRow(state.current, null));
+    }
+
+    // keyboard
+    keyboard.innerHTML = "";
+    for (const rowKeys of KEYS){
+      const r = document.createElement("div");
+      r.className = "kb-row";
+
+      for (const k of rowKeys){
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "key" + (k === "enter" || k === "back" ? " wide" : "");
+        b.textContent = (k === "back") ? "⌫" : k;
+
+        if (k.length === 1){
+          const st = state.keyStatus.get(k);
+          if (st) b.classList.add(st);
+          b.addEventListener("click", () => addLetter(k));
+        } else if (k === "enter"){
+          b.addEventListener("click", submit);
+        } else {
+          b.addEventListener("click", backspace);
+        }
+
+        r.appendChild(b);
+      }
+      keyboard.appendChild(r);
+    }
   }
 
-  clearBtn.onclick=()=>{
-    state.rows=[];
-    state.current=[];
+  clearBtn.addEventListener("click", () => {
+    state.rows = [];
+    state.current = [];
     state.keyStatus.clear();
-    state.gameOver=false;
+    state.gameOver = false;
     render();
-  };
+    showToast("Cleared.");
+  });
 
-  document.addEventListener("keydown",e=>{
-    if(e.key==="Enter") submit();
-    else if(e.key==="Backspace") state.current.pop();
-    else if(/^[a-z]$/i.test(e.key) && state.current.length<5)
-      state.current.push(e.key.toLowerCase());
-    render();
+  document.addEventListener("keydown", (e) => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+    const k = e.key;
+    if (k === "Enter") return submit();
+    if (k === "Backspace") return backspace();
+    if (/^[a-z]$/i.test(k)) return addLetter(k.toLowerCase());
   });
 
   render();
